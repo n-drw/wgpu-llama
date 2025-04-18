@@ -1,0 +1,71 @@
+[lib]
+crate-type = ["cdylib"]
+
+[package]
+authors = ["guillaumelagrange <lagrange.guillaume.1@gmail.com>"]
+license = "MIT OR Apache-2.0"
+name = "llama-burn"
+version = "0.1.0"
+edition = "2021"
+description = "Llama 3 large language model with Burn"
+
+[features]
+default = ["pretrained"]
+pretrained = ["burn/network", "dep:dirs"]
+
+llama3 = ["dep:tiktoken-rs", "dep:rustc-hash", "dep:base64"]
+tiny = ["dep:tokenizers"]
+
+# Example feature flags (backend selection)
+tch-cpu = ["burn/tch"]
+tch-gpu = ["burn/tch"]
+cuda = ["burn/cuda"]
+wgpu = ["burn/wgpu"]
+
+# To import pytorch weights
+import = ["burn-import"]
+
+[dependencies]
+burn = { path = "../../burn/crates/burn", default-features = false, features = ["std"] }
+burn-import = { path = "../../burn/crates/burn-import", optional = true }
+cubecl-wgpu = { path = "../../cubecl/crates/cubecl-wgpu", version = "0.5.0", default-features = false }
+itertools = { version = "0.12.1", default-features = false, features = [
+    "use_alloc",
+] }
+dirs = { version = "5.0.1", optional = true }
+serde = { version = "1.0.192", default-features = false, features = [
+    "derive",
+    "alloc",
+] } # alloc is for no_std, derive is needed
+serde_json = "1.0.99"
+
+# Tiktoken tokenizer (llama 3)
+tiktoken-rs = { version = "0.6.0", optional = true }
+base64 = { version = "0.22.1", optional = true }
+rustc-hash = { version = "1.1.0", optional = true }
+
+# SentencePiece tokenizer (tiny llama / llama 2)
+tokenizers = { version = "0.19.1", default-features = false, features = [
+    "onig",
+], optional = true }
+
+rand = { version = "0.9.0", default-features = false, features = [
+    "std_rng",
+] } # std_rng is for no_std
+
+# wasm specific crates
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+getrandom = { version = "0.3.2", default-features = false, features = [
+    "wasm_js",
+] }
+console_error_panic_hook = "0.1.7"
+gloo = "0.11"
+console_log = "0.1"
+yew = { version = "0.21.0", features = ["csr"] }
+yew-agent = "0.3.0"
+
+[dev-dependencies]
+clap = { version = "4.5.4", features = ["derive"] }
+burn = { path = "../../burn/crates/burn", default-features = false, features = ["std"] }
