@@ -15,7 +15,7 @@ mod tests {
 
     #[cfg(feature = "wgpu")]
     use burn::{backend::wgpu::Wgpu, tensor::f16};
-    #[cfg(feature = "wgpu")] 
+    #[cfg(feature = "wgpu")]
     pub type TestBackend = Wgpu<f32, i32>;
 
     // NOTE: no tests on tch cpu (f32)

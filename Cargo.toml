@@ -1,5 +1,5 @@
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["rlib", "cdylib"]
 
 [package]
 authors = ["guillaumelagrange <lagrange.guillaume.1@gmail.com>"]
@@ -28,6 +28,7 @@ import = ["burn-import"]
 [dependencies]
 burn = { path = "../../burn/crates/burn", default-features = false, features = ["std"] }
 burn-import = { path = "../../burn/crates/burn-import", optional = true }
+burn-wgpu = { path = "../../burn/crates/burn-wgpu" }
 cubecl-wgpu = { path = "../../cubecl/crates/cubecl-wgpu", version = "0.5.0", default-features = false }
 itertools = { version = "0.12.1", default-features = false, features = [
     "use_alloc",

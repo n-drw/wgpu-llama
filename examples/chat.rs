@@ -2,15 +2,14 @@
 use std::time::Instant;
 
 use burn::tensor::{backend::Backend, Device};
-use clap::Parser;
 use llama_burn::{
     llama::{Llama, LlamaConfig},
     sampling::{Sampler, TopP},
     tokenizer::Tokenizer,
 };
-
-#[cfg(feature = "llama3")]
-use clap::ValueEnum;
+#[cfg(feature = "wgpu")]
+use wasm_bindgen::{JsValue, JsError};
+use clap::Parser;
 
 const DEFAULT_PROMPT: &str = "How many helicopters can a human eat in one sitting?";
 
@@ -48,7 +47,7 @@ pub struct Config {
 }
 
 #[cfg(feature = "llama3")]
-#[derive(Clone, Debug, ValueEnum)]
+#[derive(Clone, Debug, clap::ValueEnum)]
 /// Llama-3 model variants to load.
 enum Llama3 {
     /// Llama-3-8B-Instruct.
@@ -102,9 +101,10 @@ pub async fn generate_wgpu<B: Backend, T: Tokenizer>(
     Ok(generated)
 }
 
-#[wasm_bindgen]
 #[cfg(feature = "wgpu")]
-pub async fn wasm_chat<B: Backend>(args: Config, device: Device<Backend>) -> Result<(), JsValue> {
+pub async fn wasm_chat(args: Config, device: Device<burn_wgpu::Wgpu<f32, i32>>) -> Result<(), JsValue> {
+    use wasm_bindgen::prelude::wasm_bindgen;
+
    let mut prompt = args.prompt;
 
    let mut sampler = if args.temperature > 0.0 {
@@ -116,12 +116,12 @@ pub async fn wasm_chat<B: Backend>(args: Config, device: Device<Backend>) -> Res
     #[cfg(feature = "tiny")]
     {
         // TinyLlama-1.1B Chat v1.0
-        let mut llama = LlamaConfig::tiny_llama_pretrained::<B>(args.max_seq_len, &device).unwrap();
+        let mut llama = LlamaConfig::tiny_llama_pretrained::<burn_wgpu::Wgpu<f32, i32>>(args.max_seq_len, &device).unwrap();
         println!("Processing prompt: {}", prompt);
 
         // Prompt formatting for chat model
         prompt = format!(
-            "<|system|>\nYou are a friendly chatbot who always responds in the style of a pirate</s>\n<|user|>\n{prompt}</s>\n<|assistant|>\n"
+            "<|system|>\nYou are a friendly chatbot who always responds in the style of a pirate</s>\n\n{prompt}</s>\n<|assistant|>\n"
         );
 
         let text = generate_wgpu(
@@ -140,16 +140,16 @@ pub async fn wasm_chat<B: Backend>(args: Config, device: Device<Backend>) -> Res
         // Llama-3-8B-Instruct or Llama-3.1-8B-Instruct
         let mut llama = match args.model_version {
             Llama3::V3Instruct => {
-                LlamaConfig::llama3_8b_pretrained::<B>(args.max_seq_len, &device).unwrap()
+                LlamaConfig::llama3_8b_pretrained::<burn_wgpu::Wgpu<f32, i32>>(args.max_seq_len, &device).unwrap()
             }
             Llama3::V31Instruct => {
-                LlamaConfig::llama3_1_8b_pretrained::<B>(args.max_seq_len, &device).unwrap()
+                LlamaConfig::llama3_1_8b_pretrained::<burn_wgpu::Wgpu<f32, i32>>(args.max_seq_len, &device).unwrap()
             }
             Llama3::V321bInstruct => {
-                LlamaConfig::llama3_2_1b_pretrained::<B>(args.max_seq_len, &device).unwrap()
+                LlamaConfig::llama3_2_1b_pretrained::<burn_wgpu::Wgpu<f32, i32>>(args.max_seq_len, &device).unwrap()
             }
             Llama3::V323bInstruct => {
-                LlamaConfig::llama3_2_3b_pretrained::<B>(args.max_seq_len, &device).unwrap()
+                LlamaConfig::llama3_2_3b_pretrained::<burn_wgpu::Wgpu<f32, i32>>(args.max_seq_len, &device).unwrap()
             }
         };
         println!("Processing prompt: {}", prompt);
@@ -189,7 +189,7 @@ pub fn chat<B: Backend>(args: Config, device: Device<B>) {
 
         // Prompt formatting for chat model
         prompt = format!(
-            "<|system|>\nYou are a friendly chatbot who always responds in the style of a pirate</s>\n<|user|>\n{prompt}</s>\n<|assistant|>\n"
+            "<|system|>\nYou are a friendly chatbot who always responds in the style of a pirate</s>\n\n{prompt}</s>\n<|assistant|>\n"
         );
 
         generate(
@@ -268,14 +268,12 @@ mod tch_cpu {
 #[cfg(feature = "wgpu")]
 mod wgpu {
     use super::*;
-    use burn::{backend::wgpu::Wgpu, tensor::f16};
-    use cubecl::wgpu::{Dx12, OpenGl, WebGpu, Vulkan};
-    use burn_wgpu::{init_setup, RuntimeOptions, WgpuDevice};
-    use llama_burn::wgpu_config::large_model_memory_config;
-
+    use burn_wgpu::{graphics::WebGpu, init_setup, MemoryConfiguration, RuntimeOptions, Wgpu, WgpuDevice};
     pub fn run(args: Config) {
         let device = WgpuDevice::DefaultDevice;
-        let memory_config = large_model_memory_config(); 
+        let memory_config = MemoryConfiguration::Custom {
+            pool_options: vec![]
+        }; 
         let options = RuntimeOptions {
             tasks_max: 32,
             memory_config  
@@ -284,23 +282,19 @@ mod wgpu {
         println!("Supported features: {:?}", setup.adapter.features());
         
         println!("Using custom wgpu device with large model memory configuration");
-        chat::<Wgpu<f16, i32>>(args, device);
+        chat::<Wgpu<f32, i32>>(args, device);
     }
 }
 
 #[cfg(feature = "webgpu")]
 mod webgpu {
     use super::*;
-    use burn::{
-        backend::wgpu::WebGpu,
-        tensor::f16,
-    };
     use burn_wgpu::WgpuDevice;
     
     pub fn run(args: Config) {
 
         let device =  WgpuDevice::IntegratedGpu(1);
-        chat::<WebGpu<f32, i32>>(args, device);
+        chat::<burn_wgpu::Wgpu<f32, i32>>(args, device);
     }
 }
 
